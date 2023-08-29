@@ -78,7 +78,7 @@ from modelscope.outputs import OutputKeys
 from modelscope.pipelines import pipeline
 from modelscope.utils.constant import Tasks
 
-skin_retouching = pipeline(Tasks.skin_retouching,model='damo/cv_unet_skin_retouching_torch',model_revision='v1.0.0')
+skin_retouching = pipeline('skin-retouching-torch',model='damo/cv_unet_skin_retouching_torch',model_revision='v1.0.0')
 result = skin_retouching('https://modelscope.oss-cn-beijing.aliyuncs.com/demo/skin-retouching/skin_retouching_examples_1.jpg')
 cv2.imwrite('result.png', result[OutputKeys.OUTPUT_IMG])
 ```
