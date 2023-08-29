@@ -1,0 +1,1 @@
+{"framework":"pytorch","task":"skin-retouching-torch","pipeline":{"type":"skin-retouching-torch"},"allow_remote":true}
