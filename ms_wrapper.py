@@ -112,9 +112,9 @@ class SkinRetouchingTorchPipeline(Pipeline):
     def forward(self, input: Dict[str, Any]) -> Dict[str, Any]:
         rgb_image = input['img'].cpu().numpy().astype(np.uint8)
 
-        retouch_local = True
+        retouch_local = False
         whitening = True
-        degree = 1.0
+        degree = 0.7
         whitening_degree = 0.8
         return_mg = False
 
