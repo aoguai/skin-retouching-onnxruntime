@@ -90,7 +90,11 @@ class SkinRetouchingTorchPipeline(Pipeline):
         self.device = device
 
     def load_onnx_model(self, onnx_path):
-        sess = onnxruntime.InferenceSession(onnx_path)
+        providers = ['CPUExecutionProvider']
+        if torch.cuda.is_available():
+            providers.insert(0, 'CUDAExecutionProvider')
+
+        sess = onnxruntime.InferenceSession(onnx_path,providers=providers)
         out_node_name = []
         input_node_name = []
         for node in sess.get_outputs():
