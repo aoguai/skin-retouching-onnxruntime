@@ -1,0 +1,6 @@
+-r requirements.txt
+torch>=2.0
+onnx>=1.15
+
+# Optional for PyTorch versions that use the newer ONNX exporter path.
+onnxscript>=0.1

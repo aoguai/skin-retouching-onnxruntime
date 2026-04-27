@@ -1,1 +1,12 @@
-{"framework":"pytorch","task":"skin-retouching-torch","pipeline":{"type":"skin-retouching-torch"},"allow_remote":true}
+{
+  "framework": "onnxruntime",
+  "task": "skin-retouching",
+  "entrypoint": "retouch_onnx.py",
+  "model_files": [
+    "model.onnx",
+    "retouch_generator.onnx",
+    "face_detector.onnx",
+    "local_detection.onnx",
+    "local_inpainting.onnx"
+  ]
+}

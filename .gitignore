@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Runtime outputs
+result.png
+result_*.png
+output/
+outputs/
+runs/
+tmp/
+temp/
+
+# Downloaded upstream model snapshots
+cv_resnet50_face-detection_retinaface/
+
+# Large model artifacts.
+# Keep these out of normal GitHub commits. Use Git LFS, GitHub Releases,
+# or external model hosting if you intentionally want to publish weights.
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Keep source metadata and documentation tracked.
+!.gitattributes
+!README.md
+!docs/
+!onnx_skin_retouching/
+!images/

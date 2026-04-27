@@ -1,107 +1,188 @@
----
-tasks:
-- skin-retouching
-widgets:
-  - task: skin-retouching
-    inputs:
-      - type: image
-        name: input
-        validator:
-          max_size: 10M #min_size|max_size|min_resolution|max_resolution|max_words|min_video_duration|max_video_duration|min_audio_duration|max_audio_duration
-          max_resolution: 5000*5000
-    examples:
-      - name: 1
-        inputs:
-          - name: input
-            data: https://modelscope.oss-cn-beijing.aliyuncs.com/demo/skin-retouching/skin_retouching_examples_1.jpg
-    inferencespec:
-      cpu: 2
-      memory: 4000
-      gpu: 1
-      gpu_memory: 16000
-model_type:
-- skin retouching
-domain:
-- cv
-frameworks:
-- pytorch, tensorflow
-backbone:
-- unet
-license: Apache License 2.0
-language:
-- ch
-tags:
-- skin retouching
-- Alibaba
-- CVPR 2022
----
+# ModelScope-Free ONNX Skin Retouching
 
-# 基于混合图层的高清人像美肤模型
+This repository adapts Alibaba ModelScope `cv_unet_skin_retouching_torch` into a ModelScope-free ONNXRuntime inference project for high-resolution portrait skin retouching.
 
-### [论文](https://openaccess.thecvf.com/content/CVPR2022/papers/Lei_ABPN_Adaptive_Blend_Pyramid_Network_for_Real-Time_Local_Retouching_of_CVPR_2022_paper.pdf) ｜ [github](https://github.com/youngLBW/CRHD-3K)
+The goals are:
 
-人像美肤模型可用于对图像中的人体皮肤进行处理，实现匀肤（处理痘印、肤色不均等）、去瑕疵（脂肪粒、斑点、痣等）以及美白等功能。模型仅对裸露的皮肤进行修饰美化，不影响其他区域。
+- no `modelscope` dependency at runtime
+- no `torch` dependency at runtime
+- `onnxruntime + opencv-python + numpy` inference for face detection, ROI cropping, skin smoothing, whitening, and optional local blemish removal
+- offline export scripts that convert upstream `.pt` / `.pth` checkpoints to ONNX
 
-![内容图像](images/examples.jpg)
+For a full deployment guide, see [ONNX_DEPLOYMENT_REPORT.md](docs/ONNX_DEPLOYMENT_REPORT.md).
 
-## 模型描述
+## Features
 
-为实现精细化的人像美肤，我们整体采用了先定位、后编辑的二阶段处理方法，且针对美肤任务中的不同瑕疵类型设计了不同的网络结构。
+- Uses the upstream `model.onnx` as the skin-mask / whitening model.
+- Exports `pytorch_model.pt` to `retouch_generator.onnx`.
+- Exports `joint_20210926.pth` to `local_detection.onnx` and `local_inpainting.onnx`.
+- Exports `cv_resnet50_face-detection_retinaface/pytorch_model.pt` to `face_detector.onnx`.
+- Runs RetinaFace prior decode, landmark decode, and NMS in numpy.
+- Defaults to `CPUExecutionProvider` to avoid noisy CUDA/cuDNN DLL errors on Windows systems with incomplete GPU runtimes.
 
-- 匀肤：对于匀肤这类需要处理大面积区域的任务，我们借鉴数字图像处理领域中的混合图层(blend layer)概念，基于unet设计了一个混合图层预测网络以实现目标区域的编辑。
-- 去瑕疵：对于脂肪粒、痣这类局部区域的瑕疵，我们首先利用unet对于目标区域进行分割定位，而后使用inpainting网络对目标区域进行修复。
-- 美白：我们利用皮肤分割算法结合混合图层的处理方式，实现皮肤区域的美白。
+## Project Layout
 
-我们将匀肤模型中的blend layer概念进行拓展，提出基于自适应混合图层的局部修饰网络[ABPN](https://openaccess.thecvf.com/content/CVPR2022/papers/Lei_ABPN_Adaptive_Blend_Pyramid_Network_for_Real-Time_Local_Retouching_of_CVPR_2022_paper.pdf) （如下图） ，实现了端到端的局部修饰（美肤、服饰去皱等），但考虑到输入图像的分辨率、人像占比以及不同瑕疵的分布差异等问题，这里我们采用了多模型的方法以实现更精准、更鲁棒的美肤效果。
-
-![内容图像](images/ABPN_framework.jpg)
-
-## 期望模型使用方式以及适用范围
-
-使用方式：
-- 直接推理，输入图像直接进行推理。
-
-使用范围:
-- 适用于包含人脸的人像照片，其中人脸分辨率大于100x100，图像整体分辨率小于5000x5000。
-
-目标场景:
-- 需要进行皮肤美化的场景，如摄影修图、图像直播等。
-
-### 如何使用
-
-本模型基于pytorch（匀肤、去瑕疵）、tensorflow（皮肤分割）进行训练和推理，在ModelScope框架上，提供输入图片，即可以通过简单的Pipeline调用来使用人像美肤模型。
-
-#### 代码范例
-```python
-import cv2
-from modelscope.outputs import OutputKeys
-from modelscope.pipelines import pipeline
-from modelscope.utils.constant import Tasks
-
-skin_retouching = pipeline('skin-retouching-torch',model='damo/cv_unet_skin_retouching_torch',model_revision='v1.0.4')
-result = skin_retouching('https://modelscope.oss-cn-beijing.aliyuncs.com/demo/skin-retouching/skin_retouching_examples_1.jpg')
-cv2.imwrite('result.png', result[OutputKeys.OUTPUT_IMG])
+```text
+.
+├── retouch_onnx.py                    # CLI inference entrypoint
+├── ms_wrapper.py                      # lightweight compatibility wrapper
+├── export_skin_retouching_onnx.py      # offline PyTorch -> ONNX exporter
+├── onnx_skin_retouching/               # runtime package
+├── docs/                               # deployment, structure, upstream notes
+├── images/                             # sample images and upstream figures
+├── requirements.txt                    # runtime dependencies
+└── requirements-export.txt             # export-time dependencies
 ```
 
-### 模型局限性以及可能的偏差
-- 模型训练数据有限，部分非常规图像或者人像占比过小可能会影响皮肤分割（美白）效果。
-- 在人脸分辨率大于100×100的图像上可取得期望效果，分辨率过小时皮肤区域本身比较模糊，美肤效果不明显。
+For the full layout, see [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md).
 
-## 训练数据介绍
-- 对公开人脸人体数据集（FFHQ等）、互联网搜集的人像图像等进行标注，构造成对图像作为训练数据。
-- 将不同类型瑕疵融合到人脸、皮肤区域，伪造训练数据。
+## Model Files
 
-### 预处理
-- 人脸区域裁剪、resize到512x512分辨率作为匀肤、去瑕疵网络输入。
-- 人体区域裁剪、resize到512x512分辨率作为皮肤分割网络输入。
+This repository is intended to be published without large model artifacts in normal Git commits. `.gitignore` excludes `*.onnx`, `*.pt`, `*.pth`, and downloaded model snapshots by default.
 
-### 后处理
-- 将网络处理后的人脸、人体区域贴回到原图中。
+To run the full pipeline, prepare these files in the project root:
 
-## 引用
-如果你觉得这个该模型对有所帮助，请考虑引用下面的相关的论文：
+```text
+model.onnx
+retouch_generator.onnx
+face_detector.onnx
+local_detection.onnx        # only needed with --enable-local
+local_inpainting.onnx       # only needed with --enable-local
+```
 
-```BibTeX
+To export the ONNX files yourself, prepare the upstream checkpoints:
+
+```text
+model.onnx
+pytorch_model.pt
+joint_20210926.pth
+cv_resnet50_face-detection_retinaface/pytorch_model.pt
+```
+
+## Install
+
+Runtime only:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Export + runtime:
+
+```powershell
+python -m pip install -r requirements-export.txt
+```
+
+`torch`, `onnx`, and `onnxscript` are export-time dependencies only. The ONNXRuntime inference path does not import them.
+
+## Export ONNX
+
+Export all ONNX models:
+
+```powershell
+python export_skin_retouching_onnx.py --model-dir .
+```
+
+Export only the face detector:
+
+```powershell
+python export_skin_retouching_onnx.py --model-dir . --only-face
+```
+
+Skip local blemish detection / inpainting export:
+
+```powershell
+python export_skin_retouching_onnx.py --model-dir . --skip-local
+```
+
+If the RetinaFace snapshot is not under the default directory:
+
+```powershell
+python export_skin_retouching_onnx.py --model-dir . --only-face --face-model-dir path\to\cv_resnet50_face-detection_retinaface
+```
+
+## Run
+
+Basic CPU inference:
+
+```powershell
+python retouch_onnx.py --input images/skin_retouching_examples_1.jpg --output result.png --model-dir .
+```
+
+Enable local blemish detection / inpainting:
+
+```powershell
+python retouch_onnx.py --input images/skin_retouching_examples_1.jpg --output result_local.png --model-dir . --enable-local
+```
+
+Tune retouching strengths:
+
+```powershell
+python retouch_onnx.py --input input.jpg --output output.png --model-dir . --retouch-degree 0.7 --whitening-degree 0.8
+```
+
+Use CUDA only when CUDA 12, cuDNN 9, and the MSVC runtime are installed correctly:
+
+```powershell
+python retouch_onnx.py --input input.jpg --output output.png --model-dir . --providers CUDAExecutionProvider,CPUExecutionProvider
+```
+
+## Python API
+
+```python
+import cv2
+from onnx_skin_retouching import SkinRetoucher
+
+image = cv2.imread("images/skin_retouching_examples_1.jpg", cv2.IMREAD_UNCHANGED)
+
+retoucher = SkinRetoucher(
+    model_dir=".",
+    retouch_degree=0.7,
+    whitening_degree=0.8,
+    enable_local=False,
+)
+
+result = retoucher.retouch(image)
+cv2.imwrite("result.png", result)
+```
+
+Compatibility wrapper:
+
+```python
+import cv2
+from ms_wrapper import OUTPUT_IMG, SkinRetouchingTorchPipeline
+
+pipeline = SkinRetouchingTorchPipeline(model=".", enable_local=False)
+result = pipeline("images/skin_retouching_examples_1.jpg")[OUTPUT_IMG]
+cv2.imwrite("result.png", result)
+```
+
+## Documentation
+
+- [Deployment report](docs/ONNX_DEPLOYMENT_REPORT.md)
+- [Face detector ONNX contract](docs/FACE_DETECTOR_ONNX_CONTRACT.md)
+- [Project structure](docs/PROJECT_STRUCTURE.md)
+- [Upstream sources and citations](docs/UPSTREAMS.md)
+
+## Upstream Sources
+
+This repository adapts upstream ModelScope assets and papers:
+
+- Skin retouching ModelScope model: <https://modelscope.cn/models/damo/cv_unet_skin_retouching_torch/summary>
+- ABPN / CRHD-3K project: <https://github.com/youngLBW/CRHD-3K>
+- RetinaFace ModelScope model: <https://modelscope.cn/models/damo/cv_resnet50_face-detection_retinaface/summary>
+- Pytorch_Retinaface implementation referenced by ModelScope: <https://github.com/biubug6/Pytorch_Retinaface>
+
+See [UPSTREAMS.md](docs/UPSTREAMS.md) for license notes and BibTeX entries.
+
+## Citation
+
+If you use the skin-retouching model, cite ABPN:
+
+```bibtex
 @inproceedings{lei2022abpn,
   title={ABPN: Adaptive Blend Pyramid Network for Real-Time Local Retouching of Ultra High-Resolution Photo},
   author={Lei, Biwen and Guo, Xiefan and Yang, Hongyu and Cui, Miaomiao and Xie, Xuansong and Huang, Di},
@@ -110,3 +191,19 @@ cv2.imwrite('result.png', result[OutputKeys.OUTPUT_IMG])
   year={2022}
 }
 ```
+
+If you use the face detector, cite RetinaFace:
+
+```bibtex
+@inproceedings{deng2020retinaface,
+  title={RetinaFace: Single-shot Multi-level Face Localisation in the Wild},
+  author={Deng, Jiankang and Guo, Jia and Ververas, Evangelos and Kotsia, Irene and Zafeiriou, Stefanos},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={5203--5212},
+  year={2020}
+}
+```
+
+## License Notes
+
+This repository contains adaptation code. Upstream model weights, model cards, papers, and third-party implementations remain governed by their own licenses and redistribution terms. Verify redistribution rights before publishing pretrained weights.
