@@ -34,7 +34,7 @@ def preprocess_retinaface(
     padded_w = int(math.ceil(resized_w / 32.0) * 32)
     padded = np.zeros((padded_h, padded_w, 3), dtype=np.float32)
     bgr = image[:, :, ::-1].astype(np.float32)
-    bgr -= np.array((104.0, 117.0, 123.0), dtype=np.float32)
+    bgr /= 255.0
     padded[:resized_h, :resized_w] = bgr
     nchw = padded.transpose(2, 0, 1)[None, ...]
     return nchw, (resized_h, resized_w), scale

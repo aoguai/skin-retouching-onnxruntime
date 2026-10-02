@@ -211,7 +211,7 @@ image: [1, 3, height, width], tensor(float)
 The runtime performs:
 
 - RGB to BGR conversion
-- mean subtraction with `(104, 117, 123)`
+- scaling to `[0, 1]` by dividing by `255`
 - long-side limit to `1024`
 - bottom/right padding to a multiple of 32
 

@@ -9,7 +9,7 @@ retouching runtime performs prior decode, landmark decode and NMS in numpy.
 - One input tensor named `image`.
 - BGR image in NCHW layout.
 - `float32`.
-- Mean-subtracted by `(104, 117, 123)`.
+- Scaled to `[0, 1]` by dividing by `255`.
 - Height and width should be multiples of 32. The runtime resizes the long side
   to at most `1024`, pads bottom/right to a multiple of 32, and feeds this tensor.
 
